@@ -25,6 +25,9 @@ jobs:
     - name: Install Doxygen
       run: sudo apt-get update && sudo apt-get install -y doxygen
 
+    - name: Create Doxygen output directory
+      run: mkdir -p docs/doxygen_xml
+
     - name: Run Doxygen
       run: doxygen Doxyfile
 
