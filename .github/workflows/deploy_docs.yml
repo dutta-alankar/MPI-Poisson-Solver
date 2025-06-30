@@ -8,6 +8,10 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required for actions/checkout
+      pages: write    # Required to deploy to GitHub Pages
+      id-token: write # Required for OpenID Connect (OIDC) authentication
 
     steps:
     - name: Checkout repository
