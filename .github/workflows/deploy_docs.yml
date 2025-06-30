@@ -1,0 +1,41 @@
+name: Deploy Sphinx Documentation to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main  # or master, depending on your default branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x' # Use a compatible Python version
+
+    - name: Install dependencies
+      run: |
+        pip install sphinx breathe exhale
+
+    - name: Install Doxygen
+      run: sudo apt-get update && sudo apt-get install -y doxygen
+
+    - name: Run Doxygen
+      run: doxygen Doxyfile
+
+    - name: Build Sphinx documentation
+      run: make -C docs html
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v4
+      if: github.ref == 'refs/heads/main' # Deploy only from main branch
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: docs/_build/html
+        # Keep the existing .nojekyll file to prevent GitHub Pages from processing with Jekyll
+        keep_files: true
