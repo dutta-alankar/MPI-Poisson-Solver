@@ -1,0 +1,14 @@
+.. _exhale_variable_visualize_8py_1a826b581c9384743515c36e9264b6b260:
+
+Variable visualize::BOX_SIZE
+============================
+
+- Defined in :ref:`file_visualize.py`
+
+
+Variable Documentation
+----------------------
+
+
+.. doxygenvariable:: visualize::BOX_SIZE
+   :project: Self-Gravity Solver

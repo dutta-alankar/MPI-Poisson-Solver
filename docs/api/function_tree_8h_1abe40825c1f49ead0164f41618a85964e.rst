@@ -1,0 +1,14 @@
+.. _exhale_function_tree_8h_1abe40825c1f49ead0164f41618a85964e:
+
+Function build_tree(const Grid \*)
+==================================
+
+- Defined in :ref:`file_tree.h`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: build_tree(const Grid *)
+   :project: Self-Gravity Solver

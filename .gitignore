@@ -9,3 +9,8 @@ gravity_solver
 
 # macOS specific
 .DS_Store
+
+# Doxygen and Sphinx documentation
+docs/_build/
+docs/doxygen_xml/
+Doxyfile

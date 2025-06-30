@@ -1,0 +1,14 @@
+.. _exhale_define_main_8c_1a08246606c233e7785a497c09672f366f:
+
+Define GRID_SIZE
+================
+
+- Defined in :ref:`file_main.c`
+
+
+Define Documentation
+--------------------
+
+
+.. doxygendefine:: GRID_SIZE
+   :project: Self-Gravity Solver

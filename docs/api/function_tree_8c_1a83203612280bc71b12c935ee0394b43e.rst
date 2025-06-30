@@ -1,0 +1,14 @@
+.. _exhale_function_tree_8c_1a83203612280bc71b12c935ee0394b43e:
+
+Function compute_mass_properties
+================================
+
+- Defined in :ref:`file_tree.c`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: compute_mass_properties(TreeNode *, const Grid *)
+   :project: Self-Gravity Solver

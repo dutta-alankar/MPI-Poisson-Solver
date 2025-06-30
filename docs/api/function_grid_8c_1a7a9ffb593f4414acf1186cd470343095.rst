@@ -1,0 +1,14 @@
+.. _exhale_function_grid_8c_1a7a9ffb593f4414acf1186cd470343095:
+
+Function free_grid(Grid \*)
+===========================
+
+- Defined in :ref:`file_grid.c`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: free_grid(Grid *)
+   :project: Self-Gravity Solver

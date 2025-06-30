@@ -1,0 +1,14 @@
+.. _exhale_function_tree_8c_1a6248b6a790c4a9399d54f81a702e42db:
+
+Function insert_particle
+========================
+
+- Defined in :ref:`file_tree.c`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: insert_particle(TreeNode *, const Grid *, int)
+   :project: Self-Gravity Solver
