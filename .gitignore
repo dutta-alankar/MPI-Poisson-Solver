@@ -1,0 +1,11 @@
+# Build artifacts
+build/
+*.o
+*.out
+gravity_solver
+
+# Data files
+*.dat
+
+# macOS specific
+.DS_Store
