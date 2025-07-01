@@ -63,9 +63,9 @@ Variables
 
 - :ref:`exhale_variable_visualize_8py_1a16b1860e6a71ae624d0f0ce90fb37c7e`
 
-- :ref:`exhale_variable_visualize_8py_1ababa0f978b5064d8cacae8de2ee06e4d`
-
 - :ref:`exhale_variable_visualize_8py_1ae018a24c6fccb114ee6882dfd1bb9d43`
+
+- :ref:`exhale_variable_visualize_8py_1ababa0f978b5064d8cacae8de2ee06e4d`
 
 - :ref:`exhale_variable_visualize_8py_1a09e3dd5eb3fac7a85b611cd67bf018db`
 

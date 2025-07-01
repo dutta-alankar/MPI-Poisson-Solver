@@ -11,9 +11,6 @@ double calculate_potential_recursive(Vector3D pos, TreeNode *node, double openin
     double dy = pos.y - node->center_of_mass.y;
     double dz = pos.z - node->center_of_mass.z;
 
-    // Periodic boundary conditions
-    
-
     double r = sqrt(dx*dx + dy*dy + dz*dz);
 
     if (r == 0.0) return 0.0;
@@ -33,7 +30,12 @@ double calculate_potential_recursive(Vector3D pos, TreeNode *node, double openin
 
 // Calculates the potential for a range of cells in the grid
 void calculate_potential(Grid *grid, TreeNode *tree, double opening_angle, int start_index, int end_index) {
-    for (int i = start_index; i < end_index; ++i) {
-        grid->cells[i].potential = calculate_potential_recursive(grid->cells[i].pos, tree, opening_angle, grid->box_size);
+    for (int i = 0; i < grid->local_size_x; ++i) {
+        for (int j = 0; j < grid->local_size_y; ++j) {
+            for (int k = 0; k < grid->local_size_z; ++k) {
+                int index = get_local_idx(grid, i, j, k);
+                grid->cells[index].potential = calculate_potential_recursive(grid->cells[index].pos, tree, opening_angle, grid->box_size);
+            }
+        }
     }
 }

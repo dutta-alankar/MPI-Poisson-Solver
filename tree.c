@@ -102,9 +102,14 @@ TreeNode* build_tree(const Grid *grid) {
     Vector3D root_center = {grid->box_size / 2.0, grid->box_size / 2.0, grid->box_size / 2.0};
     TreeNode *root = create_tree_node(root_center, grid->box_size);
 
-    for (int i = 0; i < grid->size * grid->size * grid->size; ++i) {
-        if (grid->cells[i].density > 0) {
-            insert_particle(root, grid, i);
+    for (int i = 0; i < grid->local_size_x; ++i) {
+        for (int j = 0; j < grid->local_size_y; ++j) {
+            for (int k = 0; k < grid->local_size_z; ++k) {
+                int index = (i + grid->nghosts) * grid->local_size_y * grid->local_size_z + j * grid->local_size_z + k;
+                if (grid->cells[index].density > 0) {
+                    insert_particle(root, grid, index);
+                }
+            }
         }
     }
 

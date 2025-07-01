@@ -1,129 +1,96 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <mpi.h> // Include MPI header
+#include <mpi.h>
+#include <stddef.h> // For offsetof
 #include "grid.h"
 #include "tree.h"
 #include "gravity.h"
 
-#define GRID_SIZE 64 // Increased resolution
-#define BOX_SIZE 2.0 // Bigger box
+#define GRID_SIZE 64
+#define BOX_SIZE 2.0
 #define OPENING_ANGLE 0.5
+#define NGHOSTS 2
 
 int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
-
+    MPI_Comm comm = MPI_COMM_WORLD;
     int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
 
-    Grid *grid = NULL;
-    if (rank == 0) {
-        // Rank 0 creates and initializes the grid
-        grid = create_grid(GRID_SIZE, BOX_SIZE);
-        initialize_density(grid);
-    } else {
-        // Other ranks create an empty grid structure to receive data
-        grid = create_grid(GRID_SIZE, BOX_SIZE); // Allocate memory for cells
-    }
+    // Create a custom MPI datatype for the Cell struct
+    MPI_Datatype MPI_Cell;
+    int blocklengths[3] = {3, 1, 1};
+    MPI_Aint displacements[3];
+    MPI_Datatype types[3] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE};
+    displacements[0] = offsetof(Cell, pos);
+    displacements[1] = offsetof(Cell, density);
+    displacements[2] = offsetof(Cell, potential);
+    MPI_Type_create_struct(3, blocklengths, displacements, types, &MPI_Cell);
+    MPI_Type_commit(&MPI_Cell);
 
-    // Broadcast the density data from rank 0 to all other processes
-    MPI_Bcast(grid->cells, GRID_SIZE * GRID_SIZE * GRID_SIZE * sizeof(Cell), MPI_BYTE, 0, MPI_COMM_WORLD);
+    Grid *grid = create_distributed_grid(GRID_SIZE, BOX_SIZE, NGHOSTS, comm);
+    initialize_density(grid);
 
-    // All processes build their own tree (since density data is now consistent)
+    exchange_ghost_cells(grid);
+
     TreeNode *tree = build_tree(grid);
 
-    // Determine the range of cells for this process to calculate potential
-    int total_cells = GRID_SIZE * GRID_SIZE * GRID_SIZE;
-    int cells_per_process = total_cells / size;
-    int start_index = rank * cells_per_process;
-    int end_index = (rank == size - 1) ? total_cells : (rank + 1) * cells_per_process;
-
-    // Calculate potential for the assigned range of cells
+    int start_index = 0; // Start at the beginning of the local grid
+    int end_index = grid->local_size_x * grid->local_size_y * grid->local_size_z; // End at the end of the local grid
     calculate_potential(grid, tree, OPENING_ANGLE, start_index, end_index);
 
-    // Gather the calculated potentials from all processes to rank 0
+    // Gather results
     if (rank == 0) {
-        // Rank 0 already has its part of the potential calculated
-        for (int i = 1; i < size; ++i) {
-            int recv_start_index = i * cells_per_process;
-            int recv_end_index = (i == size - 1) ? total_cells : (i + 1) * cells_per_process;
-            int num_cells_to_recv = recv_end_index - recv_start_index;
+        int *displs = (int *)malloc(size * sizeof(int));
+        int *recvcounts = (int *)malloc(size * sizeof(int));
+        int total_cells = GRID_SIZE * GRID_SIZE * GRID_SIZE;
+        Cell *global_cells = (Cell *)malloc(total_cells * sizeof(Cell));
 
-            double *temp_potentials = (double*)malloc(num_cells_to_recv * sizeof(double));
-            if (!temp_potentials) {
-                perror("Failed to allocate temporary potential buffer");
-                MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-            }
-
-            MPI_Recv(temp_potentials, num_cells_to_recv, MPI_DOUBLE, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-            // Copy received potentials into the grid
-            for (int k = 0; k < num_cells_to_recv; ++k) {
-                grid->cells[recv_start_index + k].potential = temp_potentials[k];
-            }
-            free(temp_potentials);
+        for (int i = 0; i < size; ++i) {
+            int local_size_x = GRID_SIZE / size + (i < GRID_SIZE % size ? 1 : 0);
+            int offset_x = i * (GRID_SIZE / size) + (i < GRID_SIZE % size ? i : GRID_SIZE % size);
+            recvcounts[i] = local_size_x * GRID_SIZE * GRID_SIZE;
+            displs[i] = offset_x * GRID_SIZE * GRID_SIZE;
         }
 
-        // Output the potential results
+        MPI_Gatherv(grid->cells + NGHOSTS * grid->local_size_y * grid->local_size_z, 
+                    grid->local_size_x * grid->local_size_y * grid->local_size_z, 
+                    MPI_Cell, 
+                    global_cells, recvcounts, displs, MPI_Cell, 0, comm);
+
+        // Output results from the global grid
         FILE *potential_file = fopen("potential.dat", "w");
-        if (!potential_file) {
-            perror("Failed to open potential output file");
-            MPI_Finalize();
-            return EXIT_FAILURE;
-        }
+        FILE *density_file = fopen("density.dat", "w");
 
         for (int i = 0; i < GRID_SIZE; ++i) {
             for (int j = 0; j < GRID_SIZE; ++j) {
                 int index = i * GRID_SIZE * GRID_SIZE + j * GRID_SIZE + GRID_SIZE / 2;
-                fprintf(potential_file, "%f %f %f\n", grid->cells[index].pos.x, grid->cells[index].pos.y, grid->cells[index].potential);
+                fprintf(potential_file, "%f %f %f\n", global_cells[index].pos.x, global_cells[index].pos.y, global_cells[index].potential);
+                fprintf(density_file, "%f %f %f\n", global_cells[index].pos.x, global_cells[index].pos.y, global_cells[index].density);
             }
             fprintf(potential_file, "\n");
-        }
-
-        fclose(potential_file);
-
-        // Output the density results
-        FILE *density_file = fopen("density.dat", "w");
-        if (!density_file) {
-            perror("Failed to open density output file");
-            MPI_Finalize();
-            return EXIT_FAILURE;
-        }
-
-        for (int i = 0; i < GRID_SIZE; ++i) {
-            for (int j = 0; j < GRID_SIZE; ++j) {
-                int index = i * GRID_SIZE * GRID_SIZE + j * GRID_SIZE + GRID_SIZE / 2;
-                fprintf(density_file, "%f %f %f\n", grid->cells[index].pos.x, grid->cells[index].pos.y, grid->cells[index].density);
-            }
             fprintf(density_file, "\n");
         }
 
+        fclose(potential_file);
         fclose(density_file);
+        free(global_cells);
+        free(displs);
+        free(recvcounts);
 
         printf("Simulation finished. Output written to potential.dat and density.dat\n");
     } else {
-        // Other ranks send their calculated potentials to rank 0
-        int num_cells_to_send = end_index - start_index;
-        double *temp_potentials = (double*)malloc(num_cells_to_send * sizeof(double));
-        if (!temp_potentials) {
-            perror("Failed to allocate temporary potential buffer");
-            MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-        }
-
-        // Copy calculated potentials into the temporary buffer
-        for (int k = 0; k < num_cells_to_send; ++k) {
-            temp_potentials[k] = grid->cells[start_index + k].potential;
-        }
-
-        MPI_Send(temp_potentials, num_cells_to_send, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
-        free(temp_potentials);
+        MPI_Gatherv(grid->cells + NGHOSTS * grid->local_size_y * grid->local_size_z, 
+                    grid->local_size_x * grid->local_size_y * grid->local_size_z, 
+                    MPI_Cell, 
+                    NULL, NULL, NULL, MPI_Cell, 0, comm);
     }
 
-    // Clean up
     free_grid(grid);
     free_tree(tree);
 
+    MPI_Type_free(&MPI_Cell);
     MPI_Finalize();
-
     return 0;
 }
